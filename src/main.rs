@@ -5,142 +5,13 @@ use std::collections::HashMap;
 use crate::utils::read_file;
 mod day01;
 mod day02;
+mod day03;
 mod utils;
 
 fn main() {
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    // let input = read_file("day03_test.txt"); // 4361 is right
-    let input = read_file("day03.txt");
-    // I first made a mistake where I didn't catch numbers that would go against
-    // the right edge of the grid. I fixed it by adding a check for the last number
-    // in each line. (After inner loop over x, before incrementing y.)
-
-    let mut symbol_map: HashMap<(i32, i32), char> = HashMap::new();
-    let mut gear_ratio_map: HashMap<(i32, i32), (u64, u64)> = HashMap::new();
-
-    // Scan everything once to put all symbols into a map
-    for (y, line) in input.lines().enumerate() {
-        for (x, c) in line.chars().enumerate() {
-            print!("{} ", c);
-            if !"0123456789.".contains(c) {
-                symbol_map.insert((x as i32, y as i32), c);
-            }
-        }
-        println!();
-    }
-
-    println!("Symbol map: {:?}", symbol_map);
-
-    let mut accumulator: i64 = 0;
-    // Scan again to find all numbers. A number accumulates digits until a non-digit is found.
-    for (y, line) in input.lines().enumerate() {
-        let mut number = 0;
-        let mut is_part = false;
-        let mut last_x_seen = 0;
-        let mut number_left_index = 0;
-        let mut number_right_index = 0;
-        for (x, c) in line.chars().enumerate() {
-            last_x_seen = x;
-            if let Some(digit) = c.to_digit(10) {
-                if number == 0 {
-                    number_left_index = x;
-                }
-                number = number * 10 + digit as i64;
-                is_part = is_part || symbol_in_nbhd(&symbol_map, x as i32, y as i32);
-            } else if number > 0 {
-                number_right_index = x - 1;
-
-                println!(
-                    "Found number {} at (({}-{}), {})",
-                    number, number_left_index, number_right_index, y
-                );
-                if is_part {
-                    accumulator += number;
-                    println!("Accumulator now at: {}", accumulator);
-                }
-
-                update_gear_ratio_map(
-                    &mut gear_ratio_map,
-                    number,
-                    number_left_index as i32,
-                    number_right_index as i32,
-                    y as i32,
-                );
-
-                number = 0;
-                is_part = false;
-            }
-        }
-        if number > 0 {
-            number_right_index = last_x_seen;
-            println!(
-                "Found number {} at (({}-{}), {})",
-                number, number_left_index, number_right_index, y
-            );
-            if is_part {
-                accumulator += number;
-                println!("Accumulator now at: {}", accumulator);
-            }
-
-            update_gear_ratio_map(
-                &mut gear_ratio_map,
-                number,
-                number_left_index as i32,
-                number_right_index as i32,
-                y as i32,
-            );
-
-            number = 0;
-            is_part = false;
-        }
-    }
-
-    // Part 1
-    println!("Accumulator: {}", accumulator);
-
-    // Part 2
-    let mut gear_ratio_sum = 0;
-    for (key, value) in gear_ratio_map.iter() {
-        if symbol_map.contains_key(key) {
-            if value.1 == 2 {
-                gear_ratio_sum += value.0;
-            }
-        }
-    }
-    println!("Gear ratio sum: {}", gear_ratio_sum);
-}
-
-fn update_gear_ratio_map(
-    gear_ratio_map: &mut HashMap<(i32, i32), (u64, u64)>,
-    number: i64,
-    number_left_index: i32,
-    number_right_index: i32,
-    y: i32,
-) {
-    for x in (number_left_index - 1)..=(number_right_index + 1) {
-        for dy in -1..=1 {
-            // use entry api to update the value
-            // Each entry is (product, count)
-            let entry = gear_ratio_map.entry((x, y + dy)).or_insert((1, 0));
-            entry.0 *= number as u64;
-            entry.1 += 1;
-        }
-    }
-}
-
-fn symbol_in_nbhd(symbol_map: &HashMap<(i32, i32), char>, x: i32, y: i32) -> bool {
-    for dx in -1..=1 {
-        for dy in -1..=1 {
-            if dx == 0 && dy == 0 {
-                continue;
-            }
-            if symbol_map.contains_key(&(x + dx, y + dy)) {
-                return true;
-            }
-        }
-    }
-    false
+    // let input = read_file("day03_test.txt");
 }
 
 fn solve_day02() {
@@ -221,5 +92,17 @@ mod tests {
         let input = read_file("day01.txt");
         assert_eq!(day01::part01(input.as_str()), 54388);
         assert_eq!(day01::part02(input.as_str()), 53515);
+    }
+
+    #[test]
+    fn day03_test() {
+        assert_eq!(
+            day03::both_parts(&read_file("day03_test.txt")),
+            (4361, 467835)
+        );
+        assert_eq!(
+            day03::both_parts(&read_file("day03.txt")),
+            (532428, 84051670)
+        );
     }
 }
