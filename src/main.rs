@@ -11,7 +11,88 @@ mod utils;
 fn main() {
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    // let input = read_file("day03_test.txt");
+    // let input = read_file("day04_test.txt");
+    let input = read_file("day04.txt"); // 33950, 14814534
+
+    // Parsing a line of the input file. Example:
+    // Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+
+    let mut total_value = 0;
+    let mut matches_on_card : [u32; 250] = [0; 250]; // Too long but eh.
+    let mut card_count : [u32; 250] = [0; 250];
+
+    // Split along ":" and "|"
+    for line in input.lines() {
+        let parts: Vec<&str> = line.split([':', '|'].as_ref()).collect();
+
+        println!("Parts: {:?}", parts);
+        // Cut off "Card " from the first part
+        let card_number = parts[0][5..].trim().parse::<i32>().unwrap();
+        println!("Card number: {}", card_number);
+
+        // Split the second part by " " and parse them as numbers
+        let winning: Vec<i32> = parts[1]
+            .split(' ')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.trim().parse::<i32>().unwrap())
+            .collect();
+        println!("Numbers: {:?}", winning);
+
+        // Split the third part by " " and parse them as numbers
+        let owned: Vec<i32> = parts[2]
+            .split(' ')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.trim().parse::<i32>().unwrap())
+            .collect();
+
+        println!("Owned: {:?}", owned);
+
+        // count how many of the owned numbers are in the winning numbers
+        let mut count = 0;
+        for number in owned {
+            if winning.contains(&number) {
+                count += 1;
+            }
+        }
+        println!("Count: {}", count);
+        // The value of a card is count 0 => 0, count 1 => 1, count 2 => 2, count 3 => 4, count 4 => 8, ...
+
+        // Calculate the value of the card
+        let value = if count > 0 { 2_i32.pow(count - 1) } else { 0 };
+        println!("Value: {}", value);
+
+        // Add the value to the total value
+        total_value += value;
+        matches_on_card[card_number as usize] = count;
+        card_count[card_number as usize] = 1;
+    }
+
+    println!("Total value: {}", total_value);
+
+    let mut recursive_card_production : [u128; 250] = [0; 250];
+
+    // Calculate part two solution.
+    // Reverse iterate over the cards
+    let mut index = 249;
+
+    while index > 0 {
+        // If the card is not owned, skip it
+        if card_count[index] == 0 {
+            index -= 1;
+            continue;
+        }
+
+        // Count the recursive card production of cards below this card.
+        recursive_card_production[index] = 1; // The card itself
+        for i in (index + 1)..=(index + matches_on_card[index] as usize) {
+            recursive_card_production[index] += recursive_card_production[i];
+        }
+
+        index -= 1;
+    }
+
+    println!("Recursive card production: {:?}", recursive_card_production);
+    println!("Sum: {}", recursive_card_production.iter().sum::<u128>());
 }
 
 fn solve_day02() {
