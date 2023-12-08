@@ -13,11 +13,127 @@ mod day03;
 // mod day07;
 mod utils;
 
+use regex;
+
 fn main() {
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    // let input = read_file("day05_test.txt");
+    let input = read_file("day08.txt");
 
+    // input looks like this:
+    
+    // LLR
+    //
+    // AAA = (BBB, BBB)
+    // BBB = (AAA, ZZZ)
+    // ZZZ = (ZZZ, ZZZ)
+    
+    // Parse into:
+    // LLR -> vec![Left, Left, Right] (Instructions)
+    // And the rest into a map:
+    // HashMap<String, (String, String)> = HashMap::new();
+
+    // First we parse the instructions
+    let mut lines = input.lines();
+    let instructions = lines.next().unwrap().chars().map(|c| match c {
+        'L' => Direction::Left,
+        'R' => Direction::Right,
+        _ => panic!("Unknown direction: {}", c),
+    }).collect::<Vec<Direction>>();
+
+    println!("Instructions: {:?}", instructions);
+
+    // Now we parse the map
+    let mut lines = input.lines();
+    // Skip the first line
+    lines.next();
+    let mut directions = HashMap::new();
+    let re = regex::Regex::new(r"([A-Z]{3}) = \(([A-Z]{3}), ([A-Z]{3})\)").unwrap();
+    for line in lines {
+        if line.is_empty() {
+            continue;
+        }
+        // Parse with ([A-Z]{3}) = \(([A-Z]{3}), ([A-Z]{3})\)
+
+        let caps = re.captures(line).unwrap();
+        let key = caps.get(1).unwrap().as_str();
+        let left = caps.get(2).unwrap().as_str();
+        let right = caps.get(3).unwrap().as_str();
+
+        directions.insert(key, (left, right));
+    }
+
+    println!("Directions: {:?}", directions);
+
+    // Now execute the instructions until we reach "ZZZ", starting at "AAA".
+    let mut current = "AAA";
+    let mut count = 0;
+    loop {
+        // println!("Current: {}", current);
+        if current == "ZZZ" {
+            break;
+        }
+        let (left, right) = directions.get(current).unwrap();
+        let direction = instructions[count % instructions.len()];
+        current = match direction {
+            Direction::Left => left,
+            Direction::Right => right,
+        };
+        count += 1;
+    }
+
+    println!("Count: {}", count); // 19199
+
+
+    // Part 2: Multiple start nodes, then least common multiple of the counts.
+    // Every node ending in "A" is a start node.
+    // Every node ending in "Z" is an end node.
+    let start_nodes = directions.keys()
+        .filter(|k| k.ends_with("A"))
+        .map(|k| k.to_string())
+        .collect::<Vec<String>>();
+    println!("Start nodes: {:?}", start_nodes);
+    let mut all_counts = vec!();
+
+    for start_node in start_nodes {
+        let mut current = start_node.as_str();
+        let mut count = 0;
+        loop {
+            // println!("Current: {}", current);
+            if current.ends_with('Z') {
+                break;
+            }
+            let (left, right) = directions.get(current).unwrap();
+            let direction = instructions[count % instructions.len()];
+            current = match direction {
+                Direction::Left => left,
+                Direction::Right => right,
+            };
+            count += 1;
+        }
+        println!("Count for {}: {}", start_node, count);
+        all_counts.push(count);
+    }
+
+    let mut lcm = all_counts[0];
+    for i in 1..all_counts.len() {
+        lcm = lcm * all_counts[i] / gcd(lcm, all_counts[i]);
+    }
+    println!("LCM: {}", lcm);
+
+}
+
+fn gcd(a: usize, b: usize) -> usize {
+    if b == 0 {
+        return a;
+    }
+    gcd(b, a % b)
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Direction {
+    Left,
+    Right,
 }
 
 fn solve_day_05(input: String) {
