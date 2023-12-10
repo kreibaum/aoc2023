@@ -18,8 +18,85 @@ use regex;
 fn main() {
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    let input = read_file("day08.txt");
+    let input = read_file("day09.txt");
 
+    // The input contains lines. Iterate over all lines and parse it as a list
+    // of numbers separated by spaces. 
+    let mut sum_of_next = 0;
+    let mut sum_of_previous = 0;
+    let mut rows = Vec::new();
+    for line in input.lines() {
+        let mut row = Vec::new();
+        for number in line.split(' ') {
+            row.push(number.parse::<i128>().unwrap());
+        }
+
+        // Now we have a row. Find the next number.
+        let next = find_next(&row);
+        println!("Next: {}", next);
+        sum_of_next += next;
+
+        // Find the previous number.
+        let previous = find_previous(&row);
+        println!("Previous: {}", previous);
+        sum_of_previous += previous;
+
+        rows.push(row);
+    }
+    println!("Rows: {:?}", rows);
+    println!("Sum of next: {}", sum_of_next);
+    println!("Sum of previous: {}", sum_of_previous);
+
+}
+
+fn find_next(row: &[i128]) -> i128 {
+    // First, calculate a vector of differences between each entry and the next.
+    // Track if all are zero.
+    let mut all_zero = true;
+    let mut differences = Vec::with_capacity(row.len() - 1);
+    for i in 0..(row.len() - 1) {
+        let difference = row[i + 1] - row[i];
+        if difference != 0 {
+            all_zero = false;
+        }
+        differences.push(difference);
+    }
+    if (all_zero) {
+        // All differences are zero. The next entry is simply the last entry.
+         row[row.len() - 1]
+    } else {
+        // Otherwise, recurse on the differences.
+        let next_difference = find_next(&differences);
+        // The next entry is the last entry plus the next difference.
+        row[row.len() - 1] + next_difference
+    }
+}
+
+fn find_previous(row:&[i128]) -> i128 {
+    // First, calculate a vector of differences between each entry and the next.
+    // Track if all are zero.
+    let mut all_zero = true;
+    let mut differences = Vec::with_capacity(row.len() - 1);
+    for i in 0..(row.len() - 1) {
+        let difference = row[i + 1] - row[i];
+        if difference != 0 {
+            all_zero = false;
+        }
+        differences.push(difference);
+    }
+    if (all_zero) {
+        // All differences are zero. The previous entry is simply the first entry.
+         row[0]
+    } else {
+        // Otherwise, recurse on the differences.
+        let previous_difference = find_previous(&differences);
+        // The previous entry is the first entry minus the previous difference.
+        row[0] - previous_difference
+    }
+}
+
+
+fn solve_day08(input: String) {
     // input looks like this:
     
     // LLR
@@ -82,7 +159,8 @@ fn main() {
         count += 1;
     }
 
-    println!("Count: {}", count); // 19199
+    println!("Count: {}", count);
+    // 19199
 
 
     // Part 2: Multiple start nodes, then least common multiple of the counts.
@@ -120,7 +198,6 @@ fn main() {
         lcm = lcm * all_counts[i] / gcd(lcm, all_counts[i]);
     }
     println!("LCM: {}", lcm);
-
 }
 
 fn gcd(a: usize, b: usize) -> usize {
