@@ -2,7 +2,8 @@
 
 use std::{
     cmp::{max, min},
-    collections::HashMap,
+    collections::{HashMap, HashSet},
+    ops::Add,
     result,
 };
 
@@ -16,12 +17,149 @@ mod utils;
 use regex;
 
 fn main() {
+    use Direction::*;
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    let input = read_file("day09.txt");
+    let input = read_file("day10.txt");
 
+    // Input looks like this
+    // ..F7.
+    // .FJ|.
+    // SJ.L7
+    // |F--J
+    // LJ...
+
+    // Read this into a HashMap<(i32, i32), char>
+    // Also find the start position which holds the 'S' character.
+    let mut max_x = 0;
+    let mut max_y = 0;
+
+    let mut map = HashMap::new();
+    let mut start_position = (0, 0);
+    for (y, line) in input.lines().enumerate() {
+        max_y = max(max_y, y);
+        for (x, char) in line.chars().enumerate() {
+            max_x = max(max_x, x);
+            map.insert((x as i32, y as i32), char);
+            if char == 'S' {
+                start_position = (x as i32, y as i32);
+            }
+        }
+    }
+
+    println!("Map: {:?}", map);
+    println!("Start position: {:?}", start_position);
+
+    // Walk along the pipe network, starting at 'S' until we reach 'S' again.
+    let mut direction = Direction::Right; // Checked manually
+    let mut current_position = start_position + direction;
+    let mut distance_walked = 1;
+
+    // To find the area integrate over the border of the loop using the form
+    // y*dx. Since we walk right at the start, we start with y * dx = start_position.1 * 1.
+    let mut gaussian_integral = start_position.1 * 1;
+
+    while current_position != start_position {
+        println!(
+            "Current position: {:?}, after {}",
+            current_position, distance_walked
+        );
+        println!("Current character: {:?}", map.get(&current_position));
+        direction = next_direction(direction, current_position, &map);
+
+        // Integrate over the border of the loop
+        match direction {
+            Right => gaussian_integral += current_position.1, // dx = 1
+            Left => gaussian_integral -= current_position.1,  // dx = -1
+            Up => {}                                          // dx = 0
+            Down => {}                                        // dx = 0
+        }
+
+        current_position = current_position + direction;
+        distance_walked += 1;
+    }
+    println!("Distance walked: {}", distance_walked);
+    println!("Half of that is: {}", distance_walked / 2); // 6690
+
+    let loop_length = distance_walked;
+
+    let enclosed_squares = gaussian_integral - (distance_walked / 2) + 1;
+    println!("Enclosed squares: {}", enclosed_squares); // 525
+
+    // // Now let's walk again, but this time we only go half the way.
+    // let mut direction = Direction::Right; // Checked manually
+    // let mut current_position = start_position + direction;
+    // let mut distance_walked = 1;
+    // while distance_walked < loop_length / 2 {
+    //     println!("Current position: {:?}, after {}", current_position, distance_walked);
+    //     println!("Current character: {:?}", map.get(&current_position));
+    //     direction = next_direction(direction, current_position, &map);
+    //     current_position = current_position + direction;
+    //     distance_walked += 1;
+    // }
+
+    // Next, we need to find the amount of tiles enclosed by the loop.
+    // First, identify all tiles that are on the loop and put them into a set.
+    // This is already available as is_on_loop.
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+impl Add<Direction> for (i32, i32) {
+    type Output = (i32, i32);
+
+    fn add(self, other: Direction) -> (i32, i32) {
+        use Direction::*;
+        match other {
+            Up => (self.0, self.1 - 1),
+            Down => (self.0, self.1 + 1),
+            Left => (self.0 - 1, self.1),
+            Right => (self.0 + 1, self.1),
+        }
+    }
+}
+
+fn next_direction(
+    previous_direction: Direction,
+    current_position: (i32, i32),
+    map: &HashMap<(i32, i32), char>,
+) -> Direction {
+    use Direction::*;
+    match map.get(&current_position).unwrap() {
+        '|' | '-' => previous_direction,
+        'L' => match previous_direction {
+            Down => Right,
+            Left => Up,
+            _ => panic!("Invalid previous direction for L: {:?}", previous_direction),
+        },
+        'J' => match previous_direction {
+            Down => Left,
+            Right => Up,
+            _ => panic!("Invalid previous direction for J: {:?}", previous_direction),
+        },
+        'F' => match previous_direction {
+            Up => Right,
+            Left => Down,
+            _ => panic!("Invalid previous direction for F: {:?}", previous_direction),
+        },
+        '7' => match previous_direction {
+            Up => Left,
+            Right => Down,
+            _ => panic!("Invalid previous direction for 7: {:?}", previous_direction),
+        },
+        _ => panic!("Invalid character: {}", map.get(&current_position).unwrap()),
+    }
+}
+
+fn solve_day09(input: String) {
     // The input contains lines. Iterate over all lines and parse it as a list
-    // of numbers separated by spaces. 
+    // of numbers separated by spaces.
     let mut sum_of_next = 0;
     let mut sum_of_previous = 0;
     let mut rows = Vec::new();
@@ -46,7 +184,6 @@ fn main() {
     println!("Rows: {:?}", rows);
     println!("Sum of next: {}", sum_of_next);
     println!("Sum of previous: {}", sum_of_previous);
-
 }
 
 fn find_next(row: &[i128]) -> i128 {
@@ -63,7 +200,7 @@ fn find_next(row: &[i128]) -> i128 {
     }
     if (all_zero) {
         // All differences are zero. The next entry is simply the last entry.
-         row[row.len() - 1]
+        row[row.len() - 1]
     } else {
         // Otherwise, recurse on the differences.
         let next_difference = find_next(&differences);
@@ -72,7 +209,7 @@ fn find_next(row: &[i128]) -> i128 {
     }
 }
 
-fn find_previous(row:&[i128]) -> i128 {
+fn find_previous(row: &[i128]) -> i128 {
     // First, calculate a vector of differences between each entry and the next.
     // Track if all are zero.
     let mut all_zero = true;
@@ -86,131 +223,13 @@ fn find_previous(row:&[i128]) -> i128 {
     }
     if (all_zero) {
         // All differences are zero. The previous entry is simply the first entry.
-         row[0]
+        row[0]
     } else {
         // Otherwise, recurse on the differences.
         let previous_difference = find_previous(&differences);
         // The previous entry is the first entry minus the previous difference.
         row[0] - previous_difference
     }
-}
-
-
-fn solve_day08(input: String) {
-    // input looks like this:
-    
-    // LLR
-    //
-    // AAA = (BBB, BBB)
-    // BBB = (AAA, ZZZ)
-    // ZZZ = (ZZZ, ZZZ)
-    
-    // Parse into:
-    // LLR -> vec![Left, Left, Right] (Instructions)
-    // And the rest into a map:
-    // HashMap<String, (String, String)> = HashMap::new();
-
-    // First we parse the instructions
-    let mut lines = input.lines();
-    let instructions = lines.next().unwrap().chars().map(|c| match c {
-        'L' => Direction::Left,
-        'R' => Direction::Right,
-        _ => panic!("Unknown direction: {}", c),
-    }).collect::<Vec<Direction>>();
-
-    println!("Instructions: {:?}", instructions);
-
-    // Now we parse the map
-    let mut lines = input.lines();
-    // Skip the first line
-    lines.next();
-    let mut directions = HashMap::new();
-    let re = regex::Regex::new(r"([A-Z]{3}) = \(([A-Z]{3}), ([A-Z]{3})\)").unwrap();
-    for line in lines {
-        if line.is_empty() {
-            continue;
-        }
-        // Parse with ([A-Z]{3}) = \(([A-Z]{3}), ([A-Z]{3})\)
-
-        let caps = re.captures(line).unwrap();
-        let key = caps.get(1).unwrap().as_str();
-        let left = caps.get(2).unwrap().as_str();
-        let right = caps.get(3).unwrap().as_str();
-
-        directions.insert(key, (left, right));
-    }
-
-    println!("Directions: {:?}", directions);
-
-    // Now execute the instructions until we reach "ZZZ", starting at "AAA".
-    let mut current = "AAA";
-    let mut count = 0;
-    loop {
-        // println!("Current: {}", current);
-        if current == "ZZZ" {
-            break;
-        }
-        let (left, right) = directions.get(current).unwrap();
-        let direction = instructions[count % instructions.len()];
-        current = match direction {
-            Direction::Left => left,
-            Direction::Right => right,
-        };
-        count += 1;
-    }
-
-    println!("Count: {}", count);
-    // 19199
-
-
-    // Part 2: Multiple start nodes, then least common multiple of the counts.
-    // Every node ending in "A" is a start node.
-    // Every node ending in "Z" is an end node.
-    let start_nodes = directions.keys()
-        .filter(|k| k.ends_with("A"))
-        .map(|k| k.to_string())
-        .collect::<Vec<String>>();
-    println!("Start nodes: {:?}", start_nodes);
-    let mut all_counts = vec!();
-
-    for start_node in start_nodes {
-        let mut current = start_node.as_str();
-        let mut count = 0;
-        loop {
-            // println!("Current: {}", current);
-            if current.ends_with('Z') {
-                break;
-            }
-            let (left, right) = directions.get(current).unwrap();
-            let direction = instructions[count % instructions.len()];
-            current = match direction {
-                Direction::Left => left,
-                Direction::Right => right,
-            };
-            count += 1;
-        }
-        println!("Count for {}: {}", start_node, count);
-        all_counts.push(count);
-    }
-
-    let mut lcm = all_counts[0];
-    for i in 1..all_counts.len() {
-        lcm = lcm * all_counts[i] / gcd(lcm, all_counts[i]);
-    }
-    println!("LCM: {}", lcm);
-}
-
-fn gcd(a: usize, b: usize) -> usize {
-    if b == 0 {
-        return a;
-    }
-    gcd(b, a % b)
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Direction {
-    Left,
-    Right,
 }
 
 fn solve_day_05(input: String) {
