@@ -20,6 +20,10 @@ fn main() {
     // Nothing to do, existing code already moved into tests.
     let input = read_file("day12.txt");
 
+    solve_day12(input);
+}
+
+fn solve_day12(input: String) {
     // First, parse the input. It looks like this:
 
     // ???.### 1,1,3
