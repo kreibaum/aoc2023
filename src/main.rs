@@ -17,14 +17,137 @@ mod utils;
 use regex;
 
 fn main() {
-    use Direction::*;
     // Nothing to do, existing code already moved into tests.
-    // solve_day02();
     let input = read_file("day12.txt");
 
+    // First, parse the input. It looks like this:
+
+    // ???.### 1,1,3
+    // .??..??...?##. 1,1,3
+    // ?#?#?#?#?#?#?#? 1,3,1,6
+    // ????.#...#... 4,1,1
+    // ????.######..#####. 1,6,5
+    // ?###???????? 3,2,1
+
+    let mut solution_count_sum = 0;
+
+    // We parse this into Vec<HotSpringRow>:
+    for line in input.lines() {
+        // Split line along the single whitespace
+        let mut parts = line.split(' ');
+        let state_str = parts.next().unwrap();
+        let contiguous_broken_str = parts.next().unwrap();
+
+        let mut state = Vec::new();
+
+        for char in state_str.chars() {
+            match char {
+                '.' => {
+                    state.push(HotSpringState::Operational);
+                }
+                '#' => {
+                    state.push(HotSpringState::Damaged);
+                }
+                '?' => {
+                    state.push(HotSpringState::Unknown);
+                }
+                _ => panic!("Invalid character: {}", char),
+            }
+        }
+        // Now we have a state. Parse the contiguous broken numbers.
+        let contiguous_broken = contiguous_broken_str
+            .split(',')
+            .map(|s| s.parse::<u8>().unwrap())
+            .collect::<Vec<u8>>();
+
+        let row = HotSpringRow {
+            state,
+            contiguous_broken,
+        };
+
+        println!("Row: {:?}", row);
+        let solution_count = count_solutions(&row, 0);
+        println!("Solution count: {}", solution_count);
+        solution_count_sum += solution_count;
+    }
+    println!("Solution count sum: {}", solution_count_sum);
+}
+
+fn count_solutions(row: &HotSpringRow, at: usize) -> usize {
+    // Use backtracking to count the number of solutions.
+    // Check if in the current position, we are somewhat consistent with the contiguous broken numbers.
+    if at == row.state.len() {
+        // We are at the end of the row. Verify the solution.
+        if verify_solution(row) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if row.state[at] != HotSpringState::Unknown {
+        if at + 1 < row.state.len() {
+            return count_solutions(row, at + 1);
+        } else {
+            // Verify solution
+            if verify_solution(row) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+    } else {
+        let mut clone = row.clone();
+        clone.state[at] = HotSpringState::Operational;
+        let mut count = count_solutions(&clone, at + 1);
+        clone.state[at] = HotSpringState::Damaged;
+        count += count_solutions(&clone, at + 1);
+        count
+    }
+}
+
+/// Takes a HotSpringRow without any unknowns and verifies that it is a valid solution.
+fn verify_solution(row: &HotSpringRow) -> bool {
+    let mut runs = Vec::new();
+    let mut current_run = 0;
+    let mut at = 0;
+    while at < row.state.len() {
+        match row.state[at] {
+            HotSpringState::Damaged => {
+                current_run += 1;
+            }
+            HotSpringState::Operational => {
+                if (current_run > 0) {
+                    runs.push(current_run);
+                    current_run = 0;
+                }
+            }
+            HotSpringState::Unknown => panic!("Unknown state in verify_solution"),
+        }
+        at += 1;
+    }
+
+    if (current_run > 0) {
+        runs.push(current_run);
+        current_run = 0;
+    }
+
+    runs == row.contiguous_broken
+}
+
+#[derive(Debug, Clone)]
+struct HotSpringRow {
+    state: Vec<HotSpringState>,
+    contiguous_broken: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum HotSpringState {
+    Operational, // '.'
+    Damaged,     // '#'
+    Unknown,     // '?'
 }
 
 fn solve_day10(input: String) {
+    use Direction::*;
     // Input looks like this
     // ..F7.
     // .FJ|.
