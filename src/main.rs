@@ -20,8 +20,11 @@ fn main() {
     use Direction::*;
     // Nothing to do, existing code already moved into tests.
     // solve_day02();
-    let input = read_file("day10.txt");
+    let input = read_file("day12.txt");
 
+}
+
+fn solve_day10(input: String) {
     // Input looks like this
     // ..F7.
     // .FJ|.
@@ -51,7 +54,8 @@ fn main() {
     println!("Start position: {:?}", start_position);
 
     // Walk along the pipe network, starting at 'S' until we reach 'S' again.
-    let mut direction = Direction::Right; // Checked manually
+    let mut direction = Direction::Right;
+    // Checked manually
     let mut current_position = start_position + direction;
     let mut distance_walked = 1;
 
@@ -79,28 +83,14 @@ fn main() {
         distance_walked += 1;
     }
     println!("Distance walked: {}", distance_walked);
-    println!("Half of that is: {}", distance_walked / 2); // 6690
+    println!("Half of that is: {}", distance_walked / 2);
+    // 6690
 
     let loop_length = distance_walked;
 
     let enclosed_squares = gaussian_integral - (distance_walked / 2) + 1;
-    println!("Enclosed squares: {}", enclosed_squares); // 525
-
-    // // Now let's walk again, but this time we only go half the way.
-    // let mut direction = Direction::Right; // Checked manually
-    // let mut current_position = start_position + direction;
-    // let mut distance_walked = 1;
-    // while distance_walked < loop_length / 2 {
-    //     println!("Current position: {:?}, after {}", current_position, distance_walked);
-    //     println!("Current character: {:?}", map.get(&current_position));
-    //     direction = next_direction(direction, current_position, &map);
-    //     current_position = current_position + direction;
-    //     distance_walked += 1;
-    // }
-
-    // Next, we need to find the amount of tiles enclosed by the loop.
-    // First, identify all tiles that are on the loop and put them into a set.
-    // This is already available as is_on_loop.
+    println!("Enclosed squares: {}", enclosed_squares);
+    // 525
 }
 
 #[derive(Debug, Copy, Clone)]
