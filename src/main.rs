@@ -87,13 +87,13 @@ fn main() {
 
     let mut total_value = 0;
     for block in &blocks {
-        println!("Block: {:?}", block);
-        let vertical_mirror = find_mirror(&block.columns);
-        let horizontal_mirror = find_mirror(&block.rows);
-        println!(
-            "Vertical mirror: {:?}, horizontal mirror: {:?}",
-            vertical_mirror, horizontal_mirror
-        );
+        // println!("Block: {:?}", block);
+        let vertical_mirror = find_mirror(&block.columns, None);
+        let horizontal_mirror = find_mirror(&block.rows, None);
+        // println!(
+        //     "Vertical mirror: {:?}, horizontal mirror: {:?}",
+        //     vertical_mirror, horizontal_mirror
+        // );
         if let Some(vertical_mirror) = vertical_mirror {
             total_value += vertical_mirror + 1
         }
@@ -103,22 +103,67 @@ fn main() {
     }
     println!("Total value: {}", total_value);
 
+    // For each mirror, we now need to flip a single bit in the original block.
+    // The first of those flips that results in a symmetric block again, gives us the solution for each block
 
+    // This means for a block, we need to adapt two bitboards with a single bit flip each. (bitwise xor with a single bit)
+    let mut smudge_value = 0;
+    'block_loop: for block in blocks {
+        let existing_vertical_mirror = find_mirror(&block.columns, None);
+        let existing_horizontal_mirror = find_mirror(&block.rows, None);
+
+        for x in 0..block.rows.len() {
+            for y in 0..block.columns.len() {
+                let mut clone = block.clone();
+                clone.rows[x] ^= 1 << y;
+                clone.columns[y] ^= 1 << x;
+                if let Some(vertical_mirror) = find_mirror(&clone.columns, existing_vertical_mirror) {
+                    if existing_vertical_mirror != Some(vertical_mirror) {
+                        println!("Found smudge on (x, y) = ({}, {})", x, y);
+                        println!("Block: {:?}", block);
+                        smudge_value += vertical_mirror + 1;
+                        continue 'block_loop;
+                    }
+                }
+                if let Some(horizontal_mirror) = find_mirror(&clone.rows, existing_horizontal_mirror) {
+                    if existing_horizontal_mirror != Some(horizontal_mirror) {
+                        println!("Found smudge on (x, y) = ({}, {})", x, y);
+                        println!("Block: {:?}", block);
+                        smudge_value += 100 * (horizontal_mirror + 1);
+                        continue 'block_loop;
+                    }
+                }
+                // No mirror found. Undo the change and continue.
+                // This should be cheaper then cloning the block again.
+                // clone.rows[x] ^= 1 << y;
+                // clone.columns[y] ^= 1 << x;
+            }
+        }
+        panic!("No smudge found for block: {:?}", block);
+    }
+
+    println!("Smudge value: {}", smudge_value);
+    // 23846 is not the right answer. The answer is too low :-(
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Day13Block {
     rows: Vec<u32>,
     columns: Vec<u32>,
 }
 
-fn find_mirror( axis: &[u32]) -> Option<usize> {
+fn find_mirror(axis: &[u32], forbidden: Option<usize>) -> Option<usize> {
     // Iterate over all entries. If two consecutive entries are equal, we check all entries for a mirror.
     // If this fails to identify a mirror, we keep going until we hit the second pair.
 
     let mut index = 0;
     let mut next_index = 1;
     'pair_finder: while next_index < axis.len() {
+        if Some(index) == forbidden {
+            index += 1;
+            next_index += 1;
+            continue 'pair_finder;
+        }
         if axis[index] == axis[next_index] {
             // We found a pair. Check for a mirror.
             let mut mirror_delta = 1;
