@@ -18,9 +18,127 @@ use regex;
 
 fn main() {
     // Nothing to do, existing code already moved into tests.
-    let input = read_file("day12.txt");
+    let input = read_file("day13.txt");
 
-    solve_day12(input);
+    // For Day 13, the input consists of blocks, separated by empty lines.
+
+    // #.##..##.
+    // ..#.##.#.
+    // ##......#
+    // ##......#
+    // ..#.##.#.
+    // ..##..##.
+    // #.#.##.#.
+    //
+    // #...##..#
+    // #....#..#
+    // ..##..###
+    // #####.##.
+    // #####.##.
+    // ..##..###
+    // #....#..#
+
+    // Each block should be parsed into two vectors of bit-boards. One for rows and one for columns.
+
+    let mut blocks = Vec::new();
+    let mut current_block = Day13Block {
+        rows: Vec::new(),
+        columns: Vec::new(),
+    };
+    for line in input.lines() {
+        if line.is_empty() {
+            blocks.push(current_block);
+            current_block = Day13Block {
+                rows: Vec::new(),
+                columns: Vec::new(),
+            };
+        } else {
+            // Parse the line into a row
+            let mut row = 0;
+            for (i, char) in line.chars().enumerate() {
+                match char {
+                    '#' => {
+                        row |= 1 << i;
+                    }
+                    '.' => {}
+                    _ => panic!("Invalid character: {}", char),
+                }
+            }
+            current_block.rows.push(row);
+            // Handle columns
+            let row_index = current_block.rows.len() - 1;
+            if current_block.columns.len() == 0 {
+                current_block.columns = vec![0; line.len()];
+            }
+            for (i, char) in line.chars().enumerate() {
+                match char {
+                    '#' => {
+                        current_block.columns[i] |= 1 << row_index;
+                    }
+                    '.' => {}
+                    _ => panic!("Invalid character: {}", char),
+                }
+            }
+        }
+    }
+    if current_block.rows.len() > 0 {
+        blocks.push(current_block);
+    }
+
+    let mut total_value = 0;
+    for block in &blocks {
+        println!("Block: {:?}", block);
+        let vertical_mirror = find_mirror(&block.columns);
+        let horizontal_mirror = find_mirror(&block.rows);
+        println!(
+            "Vertical mirror: {:?}, horizontal mirror: {:?}",
+            vertical_mirror, horizontal_mirror
+        );
+        if let Some(vertical_mirror) = vertical_mirror {
+            total_value += vertical_mirror + 1
+        }
+        if let Some(horizontal_mirror) = horizontal_mirror {
+            total_value += 100 * (horizontal_mirror + 1)
+        }
+    }
+    println!("Total value: {}", total_value);
+
+
+}
+
+#[derive(Debug)]
+struct Day13Block {
+    rows: Vec<u32>,
+    columns: Vec<u32>,
+}
+
+fn find_mirror( axis: &[u32]) -> Option<usize> {
+    // Iterate over all entries. If two consecutive entries are equal, we check all entries for a mirror.
+    // If this fails to identify a mirror, we keep going until we hit the second pair.
+
+    let mut index = 0;
+    let mut next_index = 1;
+    'pair_finder: while next_index < axis.len() {
+        if axis[index] == axis[next_index] {
+            // We found a pair. Check for a mirror.
+            let mut mirror_delta = 1;
+            while mirror_delta <= index && next_index + mirror_delta < axis.len() {
+                if axis[index - mirror_delta] != axis[next_index + mirror_delta] {
+                    // No mirror found. Continue searching for pairs.
+                    index += 1;
+                    next_index += 1;
+                    continue 'pair_finder;
+                }
+                mirror_delta += 1;
+            }
+            // We found a mirror.
+            return Some(index);
+        }
+        // Not a pair. Continue searching for pairs.
+        index += 1;
+        next_index += 1;
+    }
+    None
 }
 
 fn solve_day12(input: String) {
